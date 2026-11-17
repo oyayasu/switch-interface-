@@ -49,6 +49,9 @@ private:
     void moveSelection(int distance);
     void editProfile();
     void loadProfile();
+    void chooseProfilePhoto();
+    void renameProfile();
+    void removeProfilePhoto();
     void refreshControllerCount();
     void showUnavailable();
     void drawToolbarSymbol(QPainter& painter, int index, const QRectF& target) const;
