@@ -23,8 +23,6 @@ public:
     std::function<void(const QString&)> onLaunch;
     std::function<void()> onNativeLibrary;
     std::function<void()> onAddDirectory;
-    std::function<void()> onSettings;
-    std::function<void()> onControllers;
     std::function<void()> onClose;
 
 protected:
