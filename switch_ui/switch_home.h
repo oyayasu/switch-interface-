@@ -2,6 +2,8 @@
 #pragma once
 
 #include <functional>
+#include <array>
+#include <SDL3/SDL.h>
 #include <QPixmap>
 #include <QRectF>
 #include <QString>
@@ -19,6 +21,7 @@ class QStandardItemModel;
 class SwitchHomeWidget final : public QWidget {
 public:
     explicit SwitchHomeWidget(QStandardItemModel* model, QWidget* parent = nullptr);
+    ~SwitchHomeWidget() override;
 
     std::function<void(const QString&)> onLaunch;
     std::function<void()> onNativeLibrary;
@@ -51,6 +54,7 @@ private:
     void renameProfile();
     void removeProfilePhoto();
     void refreshControllerCount();
+    void pollGamepadNavigation();
     void showUnavailable();
     void drawToolbarSymbol(QPainter& painter, int index, const QRectF& target) const;
     void paintSubpage(QPainter& painter);
@@ -81,5 +85,8 @@ private:
     int profileSelection_ = 0;
     int powerSelection_ = 1;
     QString serviceTitle_;
+    SDL_Gamepad* navigationPad_ = nullptr;
+    std::array<bool, 6> lastGamepadButtons_{};
+    unsigned navigationPollTick_ = 0;
     QRectF avatarTarget_{40, 35, 90, 104};
 };
