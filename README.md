@@ -2,7 +2,7 @@
 
 A source-level UI mod for the [Eden emulator](https://github.com/eden-emulator/mirror), with a home screen modeled on the Nintendo Switch 2 interface.
 
-**Status: alpha / source only.** This is a native Qt Widgets integration into an Eden fork, not a replacement emulator and not a downloadable precompiled emulator. The home screen is functional for browsing titles from Eden's game model, launching games, adding a game directory, opening settings, and returning to the native UI. Keyboard/mouse navigation is supported. Controller input, pixel-accurate visuals, profiles, all submenus, and complete automation of cross-version compatibility remain future work.
+**Status: alpha / source only.** This is a native Qt Widgets integration into an Eden fork, not a replacement emulator and not a downloadable precompiled emulator. The home screen is functional for browsing titles from Eden's game model, launching games, adding a game directory, opening settings, and returning to the native UI. Keyboard/mouse navigation is supported. The visual layout is a first approximation, **not yet a pixel-exact reproduction** of Switch 2. Controller input, pixel-accurate visuals, profiles, all submenus, and complete automation of cross-version compatibility remain future work.
 
 ## Quick start
 
@@ -22,6 +22,17 @@ python tools/patch_eden.py --source eden-source.zip --output eden-custom.zip
 ```
 
 **Important:** GitHub-generated source ZIP files generally omit Git submodules. These are **not sufficient for a full Eden compilation**. For reliable builds, use `git clone --recursive`; do not download or run arbitrary third-party archives.
+
+## Windows graphical patcher
+
+The repository includes a small desktop program:
+
+- \`tools/patcher_gui.py\` — run with Python 3.10+ and Tkinter using \`python tools/patcher_gui.py\`.
+- **Windows .exe** — GitHub Actions builds \`Eden-UI-Patcher.exe\` from the \`Windows UI Patcher\` workflow. Download the \`Eden-UI-Patcher-Windows\` artifact from the run once the workflow succeeds.
+
+Use the **ZIP** or **Folder** selector for the unmodified Eden source. Select an unused output ZIP or folder, then click **Patch Eden**. Checking **Compile** invokes CMake locally and needs the Eden development toolchain; the patcher executable does **not** contain those compiler dependencies.
+
+The standalone patcher compiles the *patcher itself* on GitHub Actions. It does **not** build a ready-to-play Eden executable in CI. Compiling the modified emulator is a separate operation.
 
 ## Controls
 
