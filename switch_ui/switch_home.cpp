@@ -18,6 +18,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QToolTip>
+#include <QStringList>
 #include "common/controller_console_state.h"
 #include <QDateTime>
 #include <QFileInfo>
@@ -774,8 +775,11 @@ void SwitchHomeWidget::activateSubpage() {
         back();
         break;
     case Page::Library:
-        if (librarySelection_ >= 0 && librarySelection_ < games_.size() && onLaunch)
-            onLaunch(games_[librarySelection_].path);
+        if (librarySelection_ >= 0 && librarySelection_ < games_.size() && onLaunch) {
+            const QString chosen = games_[librarySelection_].path;
+            page_ = Page::Home;
+            onLaunch(chosen);
+        }
         break;
     case Page::Profile:
         if (profileSelection_ == 0) chooseProfilePhoto();
@@ -1022,53 +1026,79 @@ void SwitchHomeWidget::loadProfile() {
 }
 
 void SwitchHomeWidget::editProfile() {
-    QMenu popup(this);
-    QAction* photo = popup.addAction(QStringLiteral("Change profile picture..."));
-    QAction* rename = popup.addAction(QStringLiteral("Rename profile..."));
-    QAction* clear = popup.addAction(QStringLiteral("Remove profile picture"));
-    QAction* action = popup.exec(QCursor::pos());
-    if (action == nullptr) return;
+    profileSelection_ = 0;
+    page_ = Page::Profile;
+    update();
+}
+
+void SwitchHomeWidget::chooseProfilePhoto() {
+    // The requested native file picker is the only OS dialog on this page.
+    const QString filename = QFileDialog::getOpenFileName(
+        this, QStringLiteral("Choose profile picture"), QString(),
+        QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp)"));
+    if (filename.isEmpty()) return;
+    const QImage original(filename);
+    if (original.isNull()) {
+        toast_ = QStringLiteral("Could not open that picture.");
+        update();
+        return;
+    }
+    const QString directory = QStandardPaths::writableLocation(
+        QStandardPaths::AppDataLocation);
+    if (!QDir().mkpath(directory)) return;
+    const QString destination = QDir(directory).filePath(
+        QStringLiteral("switch-interface-profile.png"));
+    const QImage expanded = original.scaled(
+        256, 256, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+    const QPoint origin((expanded.width() - 256) / 2,
+                        (expanded.height() - 256) / 2);
+    if (!expanded.copy(QRect(origin, QSize(256, 256))).save(destination, "PNG")) return;
 
     QSettings settings(QSettings::IniFormat, QSettings::UserScope,
                        QStringLiteral("SwitchInterface"), QStringLiteral("Eden"));
-    if (action == photo) {
-        const QString filename = QFileDialog::getOpenFileName(
-            this, QStringLiteral("Choose a profile picture"), QString(),
-            QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp)"));
-        if (filename.isEmpty()) return;
-        const QImage input(filename);
-        if (input.isNull()) {
-            showUnavailable();
-            return;
-        }
-        // Save a copy under the user's own configuration directory so the source
-        // image may be moved without breaking the profile across Eden updates.
-        const QString directory = QStandardPaths::writableLocation(
-            QStandardPaths::AppDataLocation);
-        if (!QDir().mkpath(directory)) return;
-        const QString destination = QDir(directory).filePath(
-            QStringLiteral("switch-interface-profile.png"));
-        const QImage square = input.scaled(256, 256,
-                                          Qt::KeepAspectRatioByExpanding,
-                                          Qt::SmoothTransformation);
-        const QPoint origin((square.width() - 256) / 2,
-                            (square.height() - 256) / 2);
-        if (!square.copy(QRect(origin, QSize(256, 256))).save(destination, "PNG")) return;
-        settings.setValue(QStringLiteral("profile/image"), destination);
-        profilePicture_ = QPixmap(destination);
-    } else if (action == rename) {
-        bool ok = false;
-        const QString proposed = QInputDialog::getText(
-            this, QStringLiteral("Profile name"), QStringLiteral("Name:"),
-            QLineEdit::Normal, profileName_, &ok).trimmed();
-        if (ok && !proposed.isEmpty()) {
-            profileName_ = proposed.left(28);
+    settings.setValue(QStringLiteral("profile/image"), destination);
+    settings.sync();
+    profilePicture_ = QPixmap(destination);
+    update();
+}
+
+void SwitchHomeWidget::renameProfile() {
+    // Inline QLineEdit instead of a native-looking Windows input dialog.
+    auto* editor = new QLineEdit(this);
+    editor->setObjectName(QStringLiteral("switchProfileInlineEdit"));
+    editor->setText(profileName_);
+    editor->setMaxLength(28);
+    const qreal horizontal = width() / CanvasWidth;
+    const qreal vertical = height() / CanvasHeight;
+    editor->setGeometry(QRectF(480 * horizontal, 300 * vertical,
+                               640 * horizontal, 62 * vertical).toRect());
+    editor->setStyleSheet(QStringLiteral(
+        "QLineEdit { background: #FAFAFA; color: #202025;"
+        "border: 3px solid #8078FA; border-radius: 8px;"
+        "padding-left: 18px; font-family: Arial; font-size: 21px; }"));
+    editor->show();
+    editor->setFocus();
+    editor->selectAll();
+    connect(editor, &QLineEdit::returnPressed, this, [this, editor] {
+        const QString candidate = editor->text().trimmed();
+        if (!candidate.isEmpty()) {
+            profileName_ = candidate;
+            QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                               QStringLiteral("SwitchInterface"), QStringLiteral("Eden"));
             settings.setValue(QStringLiteral("profile/name"), profileName_);
+            settings.sync();
         }
-    } else if (action == clear) {
-        profilePicture_ = QPixmap();
-        settings.remove(QStringLiteral("profile/image"));
-    }
+        editor->deleteLater();
+        setFocus();
+        update();
+    });
+}
+
+void SwitchHomeWidget::removeProfilePhoto() {
+    profilePicture_ = QPixmap();
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                       QStringLiteral("SwitchInterface"), QStringLiteral("Eden"));
+    settings.remove(QStringLiteral("profile/image"));
     settings.sync();
     update();
 }
