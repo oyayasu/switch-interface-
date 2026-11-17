@@ -98,8 +98,8 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         game_list->setFocus();
     };
     switch_home->onAddDirectory = [this] { game_list->AddDirectory(); };
-    switch_home->onControllers = [this] { OnConfigure(); };
-    switch_home->onSettings = [this] { OnConfigure(); };
+    // Controllers and Settings are now rendered by SwitchHomeWidget itself.
+    // Do not bind them to Eden's native Configure dialog.
     switch_home->onClose = [this] { close(); };
     connect(game_list, &GameList::PopulatingCompleted, this, [this] {
         if (switch_home && switch_home->isVisible() && !emulation_running) {
@@ -178,7 +178,7 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         json.dumps(
             {
                 "name": "Switch Interface for Eden",
-                "version": 1,
+                "version": 2,
                 "source": "https://github.com/eden-emulator/mirror",
                 "note": "A source-code UI patch. This does not verify runtime compatibility.",
             },
