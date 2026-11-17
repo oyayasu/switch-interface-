@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from patch_eden import PatchError, extract_zip_safely, main, patch_tree
+
+
+class PatcherTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.source = self.root / "source"
+        (self.source / "src/yuzu").mkdir(parents=True)
+        (self.source / "CMakeLists.txt").write_text("project(yuzu)\n", encoding="utf-8")
+        (self.source / "src/yuzu/CMakeLists.txt").write_text(
+            "find_package(Qt6 REQUIRED COMPONENTS Widgets)\n"
+            "add_executable(yuzu\n    main_window.cpp\n)\n",
+            encoding="utf-8",
+        )
+        (self.source / "src/yuzu/main_window.h").write_text(
+            "class GameList;\n"
+            "class MainWindow {\n"
+            "    GameList* game_list = nullptr;\n"
+            "};\n",
+            encoding="utf-8",
+        )
+        (self.source / "src/yuzu/main_window.cpp").write_text(
+            '#include "main_window.h"\n'
+            "void startup() {\n"
+            "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n"
+            "    // Set up game list mode checkboxes.\n"
+            "}\n"
+            "void stop() {\n"
+            "    game_list->SetFilterFocus();\n"
+            "    tas_label->clear();\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+    def test_patches_expected_files_and_is_idempotent(self):
+        self.assertTrue(patch_tree(self.source))
+        self.assertTrue((self.source / "src/yuzu/switch_home.h").is_file())
+        self.assertTrue((self.source / "src/yuzu/switch_home.cpp").is_file())
+        content = (self.source / "src/yuzu/main_window.cpp").read_text()
+        self.assertIn("BootGameFromList(game_path, StartGameType::Normal)", content)
+        self.assertIn("switch_home->show();", content)
+        self.assertFalse(patch_tree(self.source))
+
+    def test_unknown_upstream_revision_fails_without_writing(self):
+        target = self.source / "src/yuzu/main_window.cpp"
+        original = target.read_text().replace(
+            "    // Set up game list mode checkboxes.", "    // upstream changed here"
+        )
+        target.write_text(original)
+        with self.assertRaises(PatchError):
+            patch_tree(self.source)
+        self.assertEqual(target.read_text(), original)
+        self.assertNotIn("switch_home.cpp", (self.source / "src/yuzu/CMakeLists.txt").read_text())
+        self.assertFalse((self.source / "src/yuzu/switch_home.cpp").exists())
+
+    def test_partial_patch_fails_closed(self):
+        target = self.source / "src/yuzu/main_window.h"
+        target.write_text(target.read_text() + "// SWITCH_INTERFACE_PATCH_v1\n")
+        with self.assertRaises(PatchError):
+            patch_tree(self.source)
+
+    def test_rejects_zip_path_traversal(self):
+        archive = self.root / "malicious.zip"
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("../outside.txt", "bad")
+        target = self.root / "unpacked"
+        target.mkdir()
+        with self.assertRaises(PatchError):
+            extract_zip_safely(archive, target)
+        self.assertFalse((self.root / "outside.txt").exists())
+
+    def test_cli_creates_a_separate_copy(self):
+        output = self.root / "patched"
+        self.assertEqual(main(["--source", str(self.source), "--output", str(output)]), 0)
+        self.assertTrue((output / "src/yuzu/switch_home.cpp").is_file())
+        self.assertFalse((self.source / "src/yuzu/switch_home.cpp").exists())
+        self.assertEqual(main(["--source", str(self.source), "--output", str(output)]), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
