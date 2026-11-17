@@ -12,3 +12,20 @@ jobs:
           python-version: '3.11'
       - run: python -m py_compile tools/patch_eden.py
       - run: python -m unittest discover -s tests -v
+  upstream-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: eden-emulator/mirror
+          ref: master
+          path: eden-upstream
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Confirm patches still apply to upstream
+        run: python tools/patch_eden.py --source eden-upstream --output eden-patched
+      - name: Confirm Qt source was installed
+        run: test -f eden-patched/src/yuzu/switch_home.cpp
