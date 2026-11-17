@@ -2,7 +2,13 @@
 
 A source-level UI mod for the [Eden emulator](https://github.com/eden-emulator/mirror), with a home screen modeled on the Nintendo Switch 2 interface.
 
-**Status: alpha / source only.** This is a native Qt Widgets integration into an Eden fork, not a replacement emulator and not a downloadable precompiled emulator. The home screen is functional for browsing titles from Eden's game model, launching games, adding a game directory, opening settings, and returning to the native UI. Keyboard/mouse navigation is supported. The visual layout is a first approximation, **not yet a pixel-exact reproduction** of Switch 2. Direct gamepad-driven Home navigation, pixel-accurate native icons, native versions of every submenu, and complete automation of cross-version compatibility remain future work.
+**Status: alpha / source only.** This project injects a custom Qt Widgets home shell into an Eden source tree. It now includes a console-style **Controllers** screen modeled on the supplied Switch 2 reference, plus console-native **System Settings**, **Library**, **User Settings**, and **Power** screens.
+
+**Controllers and System Settings no longer open Eden's native Configure dialog from the home toolbar.** The native dialog is retained internally for emulator maintenance but is not exposed by those buttons. F12 remains an advanced emergency switch back to Eden's original library.
+
+The controller page shows Eden's configured/assigned player count (up to four indicators) and provides familiar console navigation, but it does **not** currently change controller assignments, initiate Bluetooth pairing, or report physical battery status. The Search page updates the existing Eden state; no unimplemented pairing functionality is claimed.
+
+Home navigation uses keyboard/mouse and SDL3 gamepad d-pad/left-stick plus South/East face buttons (confirm/back). The appearance is an ongoing recreation, not a guaranteed pixel-exact reproduction. Advanced console-only features are presented as unavailable inside the custom shell instead of opening an unrelated desktop window.
 
 ## Quick start
 
@@ -52,12 +58,20 @@ The standalone patcher compiles the *patcher itself* on GitHub Actions. It does 
 
 ## Controls
 
-- Left/Right: choose game or toolbar item
-- Down/Up: switch between games and toolbar
-- Enter/Space: launch or activate
-- Mouse: click games or buttons
-- F12: toggle the original Eden library and the custom home screen
-- Escape: go back to games from toolbar
+- Home: Left/Right to select games or toolbar actions, Up/Down to switch groups
+- Inside pages: Up/Down and Enter/A navigate console-style menus
+- Escape, Backspace or B: go back one level, then Home
+- SDL3 controller: D-pad / left stick, South to confirm, East to go back (physical button labels may differ by controller)
+- Mouse: select games, enter Controllers, navigate menu options and use on-screen A / B
+- Click the avatar or press P: open a console-style profile page; photo chooser uses Windows Explorer, name editor is inline
+- F12: advanced fallback between the home shell and Eden's original game list
+
+## Current boundaries
+
+- Controllers **uses the real Eden assignment/configuration state**, not a simulated count in the native build. The slider in the browser preview is demo-only.
+- `Search for Controllers` does not force Bluetooth discovery; it refreshes already recognized devices.
+- `Change Grip/Order`, Nintendo network services and many advanced emulator settings are not implemented in the custom interface yet.
+- The Wi-Fi and battery icons in the Home bar are visual placeholders. Games still start through Eden's existing boot path.
 
 ## Architecture
 
