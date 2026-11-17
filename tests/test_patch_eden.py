@@ -51,6 +51,9 @@ class PatcherTests(unittest.TestCase):
         content = (self.source / "src/yuzu/main_window.cpp").read_text()
         self.assertIn("BootGameFromList(game_path, StartGameType::Normal)", content)
         self.assertIn("switch_home->show();", content)
+        self.assertNotIn("switch_home->onControllers", content)
+        self.assertNotIn("switch_home->onSettings", content)
+        self.assertIn("Controllers and Settings are now rendered", content)
         self.assertFalse(patch_tree(self.source))
 
     def test_unknown_upstream_revision_fails_without_writing(self):
