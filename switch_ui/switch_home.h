@@ -33,6 +33,11 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
+    enum class Page {
+        Home, Controllers, ControllerDetail, Settings, SettingsDetail,
+        Library, Service, Power, Profile
+    };
+
     struct Game {
         QString title;
         QString path;
@@ -47,6 +52,12 @@ private:
     void refreshControllerCount();
     void showUnavailable();
     void drawToolbarSymbol(QPainter& painter, int index, const QRectF& target) const;
+    void paintSubpage(QPainter& painter);
+    void drawFooter(QPainter& painter) const;
+    void drawJoycons(QPainter& painter, qreal x, qreal y, qreal scale, bool colorful) const;
+    void activateSubpage();
+    void back();
+    int pageRowCount() const;
 
     QStandardItemModel* model_ = nullptr;
     QVector<Game> games_;
@@ -61,5 +72,13 @@ private:
     int controllers_ = 0;
     int gradientTick_ = 0;
     bool toolbarFocused_ = false;
+    Page page_ = Page::Home;
+    int menuSelection_ = 1;
+    int controllerDetail_ = 1;
+    int settingsSelection_ = 0;
+    int librarySelection_ = 0;
+    int profileSelection_ = 0;
+    int powerSelection_ = 1;
+    QString serviceTitle_;
     QRectF avatarTarget_{40, 35, 90, 104};
 };
