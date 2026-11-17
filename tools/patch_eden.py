@@ -133,8 +133,10 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
 """
     cpp = replace_exact(
         cpp,
-        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n",
-        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n" + bridge,
+        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n"
+        "    // Set up game list mode checkboxes.",
+        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n" + bridge +
+        "\n    // Set up game list mode checkboxes.",
         "src/yuzu/main_window.cpp",
     )
 
@@ -142,7 +144,7 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
     # screen afterwards; the original emulation/shutdown routines are unchanged.
     cpp = replace_exact(
         cpp,
-        "    game_list->SetFilterFocus();\n",
+        "    game_list->SetFilterFocus();\n    tas_label->clear();",
         "    game_list->SetFilterFocus();\n"
         "    // SWITCH_INTERFACE_PATCH_v1: return to the home screen after a game ends.\n"
         "    if (switch_home) {\n"
@@ -153,7 +155,8 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         "        switch_home->show();\n"
         "        switch_home->raise();\n"
         "        switch_home->setFocus();\n"
-        "    }\n",
+        "    }\n"
+        "    tas_label->clear();",
         "src/yuzu/main_window.cpp",
     )
 
