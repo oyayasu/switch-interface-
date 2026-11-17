@@ -88,7 +88,17 @@ SwitchHomeWidget::SwitchHomeWidget(QStandardItemModel* model, QWidget* parent)
     });
     controllers->start(500);
     refreshControllerCount();
+    auto* navTimer = new QTimer(this);
+    connect(navTimer, &QTimer::timeout, this, [this] { pollGamepadNavigation(); });
+    navTimer->start(80);
     reload();
+}
+
+SwitchHomeWidget::~SwitchHomeWidget() {
+    if (navigationPad_ && SDL_WasInit(SDL_INIT_GAMEPAD)) {
+        SDL_CloseGamepad(navigationPad_);
+        navigationPad_ = nullptr;
+    }
 }
 
 void SwitchHomeWidget::reload() {
@@ -985,6 +995,49 @@ void SwitchHomeWidget::showUnavailable() {
         toast_.clear();
         update();
     });
+}
+
+
+void SwitchHomeWidget::pollGamepadNavigation() {
+    if (!isVisible() || !isActiveWindow() || !SDL_WasInit(SDL_INIT_GAMEPAD)) return;
+
+    if (navigationPad_ && !SDL_GamepadConnected(navigationPad_)) {
+        SDL_CloseGamepad(navigationPad_);
+        navigationPad_ = nullptr;
+        lastGamepadButtons_.fill(false);
+    }
+    if (!navigationPad_ && (++navigationPollTick_ % 8 == 0)) {
+        int count = 0;
+        SDL_JoystickID* ids = SDL_GetGamepads(&count);
+        if (ids && count > 0) navigationPad_ = SDL_OpenGamepad(ids[0]);
+        SDL_free(ids);
+    }
+    if (!navigationPad_) return;
+
+    // Use edge-triggered presses to avoid repeated menu activations.
+    const bool pressed[] = {
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_LEFT) ||
+            SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTX) < -18000,
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) ||
+            SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTX) > 18000,
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_UP) ||
+            SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTY) < -18000,
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_DOWN) ||
+            SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTY) > 18000,
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_SOUTH),
+        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_EAST),
+    };
+    constexpr int keyCodes[] = {
+        Qt::Key_Left, Qt::Key_Right, Qt::Key_Up, Qt::Key_Down,
+        Qt::Key_Return, Qt::Key_Escape
+    };
+    for (std::size_t i = 0; i < lastGamepadButtons_.size(); ++i) {
+        if (pressed[i] && !lastGamepadButtons_[i]) {
+            QKeyEvent input(QEvent::KeyPress, keyCodes[i], Qt::NoModifier);
+            keyPressEvent(&input);
+        }
+        lastGamepadButtons_[i] = pressed[i];
+    }
 }
 
 void SwitchHomeWidget::refreshControllerCount() {
