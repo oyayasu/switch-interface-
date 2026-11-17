@@ -11,6 +11,7 @@
 class QKeyEvent;
 class QMouseEvent;
 class QPaintEvent;
+class QPainter;
 class QStandardItemModel;
 
 // A native Qt home surface. The emulator's game model and boot path remain authoritative.
