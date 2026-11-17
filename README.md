@@ -8,7 +8,7 @@ A source-level UI mod for the [Eden emulator](https://github.com/eden-emulator/m
 
 The controller page shows Eden's configured/assigned player count (up to four indicators) and provides familiar console navigation, but it does **not** currently change controller assignments, initiate Bluetooth pairing, or report physical battery status. The Search page updates the existing Eden state; no unimplemented pairing functionality is claimed.
 
-Home navigation uses keyboard/mouse and SDL3 gamepad d-pad/left-stick plus South/East face buttons (confirm/back). The appearance is an ongoing recreation, not a guaranteed pixel-exact reproduction. Advanced console-only features are presented as unavailable inside the custom shell instead of opening an unrelated desktop window.
+Home navigation uses keyboard/mouse and SDL3 gamepad d-pad/left-stick with A/B confirmation, using physical face-button labels when SDL recognizes a Nintendo layout. The appearance is an ongoing recreation, not a guaranteed pixel-exact reproduction. Advanced console-only features are presented as unavailable inside the custom shell instead of opening an unrelated desktop window.
 
 ## Quick start
 
@@ -61,7 +61,7 @@ The standalone patcher compiles the *patcher itself* on GitHub Actions. It does 
 - Home: Left/Right to select games or toolbar actions, Up/Down to switch groups
 - Inside pages: Up/Down and Enter/A navigate console-style menus
 - Escape, Backspace or B: go back one level, then Home
-- SDL3 controller: D-pad / left stick, South to confirm, East to go back (physical button labels may differ by controller)
+- SDL3 controller: D-pad / left stick; A to confirm and B to go back, adapting the layout when SDL identifies Nintendo-style face-button labels
 - Mouse: select games, enter Controllers, navigate menu options and use on-screen A / B
 - Click the avatar or press P: open a console-style profile page; photo chooser uses Windows Explorer, name editor is inline
 - F12: advanced fallback between the home shell and Eden's original game list
