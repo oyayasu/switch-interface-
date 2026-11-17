@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+.vscode/
+build/
+build-*/
+eden/
+eden-custom/
+*.zip
+.DS_Store
