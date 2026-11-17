@@ -556,7 +556,11 @@ void SwitchHomeWidget::paintSubpage(QPainter& p) {
         p.drawLine(QPointF(865, 91), QPointF(865, 633));
         label(p, QRectF(265, 115, 330, 32), QStringLiteral("System"), 19,
               QColor(99, 99, 101));
+        // Draw only the left half of the controller silhouette.
+        p.save();
+        p.setClipRect(QRectF(271, 169, 49, 115));
         drawJoycons(p, 272, 171, 1.38, false);
+        p.restore();
         // console screen between the detached system Joy-Cons
         p.setPen(QPen(QColor(4, 4, 5), 5));
         p.setBrush(QColor(17, 17, 18));
@@ -564,7 +568,11 @@ void SwitchHomeWidget::paintSubpage(QPainter& p) {
         p.setPen(QPen(QColor(1, 1, 2), 5));
         p.setBrush(QColor(247, 247, 247));
         p.drawRect(QRectF(353, 180, 161, 87));
-        drawJoycons(p, 541, 171, 1.38, false);
+        // Right Joy-Con has its own clipped silhouette.
+        p.save();
+        p.setClipRect(QRectF(542, 169, 62, 115));
+        drawJoycons(p, 542 - 52 * 1.38, 171, 1.38, false);
+        p.restore();
         // battery under the system screen (decorative, unknown real charge)
         p.setPen(QPen(QColor(10, 10, 11), 2));
         p.setBrush(QColor(9, 9, 9));
