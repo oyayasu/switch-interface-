@@ -2,6 +2,7 @@
 #include "switch_home.h"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <QAbstractItemModel>
 #include <QDateTime>
@@ -38,7 +39,7 @@ void label(QPainter& painter, const QRectF& rect, const QString& value,
     font.setBold(strong);
     painter.setFont(font);
     painter.setPen(color);
-    painter.drawText(rect, align | Qt::TextSingleLine, value);
+    painter.drawText(rect, static_cast<int>(align) | Qt::TextSingleLine, value);
     painter.restore();
 }
 }
