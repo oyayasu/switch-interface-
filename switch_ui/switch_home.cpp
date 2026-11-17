@@ -807,22 +807,52 @@ void SwitchHomeWidget::activate() {
         return;
     }
     switch (selectedToolbar_) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-        showUnavailable();
+    case 0: case 1: case 2: case 3: case 4:
+        serviceTitle_ = QString::fromLatin1(kActions[selectedToolbar_]);
+        page_ = Page::Service;
         break;
     case 5: if (onAddDirectory) onAddDirectory(); break;
-    case 6: if (onControllers) onControllers(); break;
-    case 7: if (onNativeLibrary) onNativeLibrary(); break;
-    case 8: if (onSettings) onSettings(); break;
-    case 9: if (onClose) onClose(); break;
+    case 6: page_ = Page::Controllers; menuSelection_ = 1; break;
+    case 7: page_ = Page::Library; librarySelection_ = 0; break;
+    case 8: page_ = Page::Settings; settingsSelection_ = 0; break;
+    case 9: page_ = Page::Power; powerSelection_ = 0; break;
     }
+    update();
 }
 
 void SwitchHomeWidget::keyPressEvent(QKeyEvent* event) {
+    if (page_ != Page::Home) {
+        const int key = event->key();
+        if (key == Qt::Key_Escape || key == Qt::Key_Backspace || key == Qt::Key_B) {
+            back();
+            return;
+        }
+        if (key == Qt::Key_Enter || key == Qt::Key_Return ||
+            key == Qt::Key_Space || key == Qt::Key_A) {
+            activateSubpage();
+            return;
+        }
+        if (key == Qt::Key_Up || key == Qt::Key_Down ||
+            (page_ == Page::Library && (key == Qt::Key_Left || key == Qt::Key_Right))) {
+            const int shift = (key == Qt::Key_Up || key == Qt::Key_Left) ? -1 : 1;
+            const int limit = pageRowCount();
+            auto navigate = [shift, limit](int& selected) {
+                selected = std::clamp(selected + shift, 0, std::max(0, limit - 1));
+            };
+            switch (page_) {
+            case Page::Controllers: navigate(menuSelection_); break;
+            case Page::Settings: navigate(settingsSelection_); break;
+            case Page::Library: navigate(librarySelection_); break;
+            case Page::Profile: navigate(profileSelection_); break;
+            case Page::Power: navigate(powerSelection_); break;
+            default: break;
+            }
+            update();
+            return;
+        }
+        QWidget::keyPressEvent(event);
+        return;
+    }
     switch (event->key()) {
     case Qt::Key_Left: moveSelection(-1); return;
     case Qt::Key_Right: moveSelection(1); return;
@@ -830,8 +860,10 @@ void SwitchHomeWidget::keyPressEvent(QKeyEvent* event) {
     case Qt::Key_Down: toolbarFocused_ = true; update(); return;
     case Qt::Key_Enter:
     case Qt::Key_Return:
-    case Qt::Key_Space: activate(); return;
-    case Qt::Key_Escape: toolbarFocused_ = false; update(); return;
+    case Qt::Key_Space:
+    case Qt::Key_A: activate(); return;
+    case Qt::Key_Escape:
+    case Qt::Key_B: toolbarFocused_ = false; update(); return;
     case Qt::Key_P: editProfile(); return;
     default: QWidget::keyPressEvent(event); return;
     }
@@ -841,6 +873,78 @@ void SwitchHomeWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() != Qt::LeftButton) return;
     const QPointF pos(event->position().x() * CanvasWidth / width(),
                       event->position().y() * CanvasHeight / height());
+
+    if (page_ != Page::Home) {
+        // Footer A / B controls are deliberately clickable, just like the
+        // on-screen console affordances.
+        if (QRectF(1027, 658, 108, 49).contains(pos)) {
+            back();
+            return;
+        }
+        if (QRectF(1142, 658, 111, 49).contains(pos)) {
+            activateSubpage();
+            return;
+        }
+        if (page_ == Page::Controllers && pos.x() >= 880 && pos.x() <= 1230) {
+            const QRectF rows[] = {
+                QRectF(886, 151, 335, 76), QRectF(886, 238, 335, 85),
+                QRectF(886, 329, 335, 77), QRectF(886, 415, 335, 85),
+                QRectF(886, 501, 335, 84)
+            };
+            for (int i = 0; i < 5; ++i) {
+                if (rows[i].contains(pos)) {
+                    menuSelection_ = i;
+                    activateSubpage();
+                    return;
+                }
+            }
+        } else if (page_ == Page::ControllerDetail) {
+            if (controllerDetail_ == 1 && QRectF(901, 542, 297, 51).contains(pos)) {
+                refreshControllerCount();
+                update();
+            }
+        } else if (page_ == Page::Settings) {
+            for (int i = 0; i < 6; ++i) {
+                if (QRectF(48, 132 + i * 76, 349, 68).contains(pos)) {
+                    settingsSelection_ = i;
+                    activateSubpage();
+                    return;
+                }
+            }
+        } else if (page_ == Page::Profile) {
+            for (int i = 0; i < 3; ++i) {
+                if (QRectF(480, 177 + i * 103, 700, 79).contains(pos)) {
+                    profileSelection_ = i;
+                    activateSubpage();
+                    return;
+                }
+            }
+        } else if (page_ == Page::Power) {
+            for (int i = 0; i < 2; ++i) {
+                if (QRectF(146, 290 + i * 116, 980, 86).contains(pos)) {
+                    powerSelection_ = i;
+                    activateSubpage();
+                    return;
+                }
+            }
+        } else if (page_ == Page::Library) {
+            const int offset = (librarySelection_ / 4) * 4;
+            for (int i = offset; i < std::min(offset + 4, static_cast<int>(games_.size())); ++i) {
+                const QRectF rect(84 + (i - offset) * 301, 195, 256, 256);
+                if (rect.contains(pos)) {
+                    librarySelection_ = i;
+                    activateSubpage();
+                    return;
+                }
+            }
+        } else if (page_ == Page::Service || page_ == Page::SettingsDetail) {
+            back();
+            return;
+        }
+        update();
+        return;
+    }
+
     if (avatarTarget_.contains(pos)) {
         editProfile();
         return;
