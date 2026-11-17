@@ -1026,6 +1026,15 @@ void SwitchHomeWidget::pollGamepadNavigation() {
     }
     if (!navigationPad_) return;
 
+    // Respect Nintendo-style reversed A/B labels when SDL recognizes them.
+    // Xbox-style controllers retain South=A and East=B.
+    const bool nintendoLayout =
+        SDL_GetGamepadButtonLabel(navigationPad_, SDL_GAMEPAD_BUTTON_SOUTH) ==
+        SDL_GAMEPAD_BUTTON_LABEL_B;
+    const SDL_GamepadButton acceptButton =
+        nintendoLayout ? SDL_GAMEPAD_BUTTON_EAST : SDL_GAMEPAD_BUTTON_SOUTH;
+    const SDL_GamepadButton backButton =
+        nintendoLayout ? SDL_GAMEPAD_BUTTON_SOUTH : SDL_GAMEPAD_BUTTON_EAST;
     // Use edge-triggered presses to avoid repeated menu activations.
     const bool pressed[] = {
         SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_LEFT) ||
@@ -1036,8 +1045,8 @@ void SwitchHomeWidget::pollGamepadNavigation() {
             SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTY) < -18000,
         SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_DPAD_DOWN) ||
             SDL_GetGamepadAxis(navigationPad_, SDL_GAMEPAD_AXIS_LEFTY) > 18000,
-        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_SOUTH),
-        SDL_GetGamepadButton(navigationPad_, SDL_GAMEPAD_BUTTON_EAST),
+        SDL_GetGamepadButton(navigationPad_, acceptButton),
+        SDL_GetGamepadButton(navigationPad_, backButton),
     };
     constexpr int keyCodes[] = {
         Qt::Key_Left, Qt::Key_Right, Qt::Key_Up, Qt::Key_Down,
