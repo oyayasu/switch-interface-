@@ -2,7 +2,7 @@
 
 A source-level UI mod for the [Eden emulator](https://github.com/eden-emulator/mirror), with a home screen modeled on the Nintendo Switch 2 interface.
 
-**Status: alpha / source only.** This is a native Qt Widgets integration into an Eden fork, not a replacement emulator and not a downloadable precompiled emulator. The home screen is functional for browsing titles from Eden's game model, launching games, adding a game directory, opening settings, and returning to the native UI. Keyboard/mouse navigation is supported. The visual layout is a first approximation, **not yet a pixel-exact reproduction** of Switch 2. Controller input, pixel-accurate visuals, profiles, all submenus, and complete automation of cross-version compatibility remain future work.
+**Status: alpha / source only.** This is a native Qt Widgets integration into an Eden fork, not a replacement emulator and not a downloadable precompiled emulator. The home screen is functional for browsing titles from Eden's game model, launching games, adding a game directory, opening settings, and returning to the native UI. Keyboard/mouse navigation is supported. The visual layout is a first approximation, **not yet a pixel-exact reproduction** of Switch 2. Direct gamepad-driven Home navigation, pixel-accurate native icons, native versions of every submenu, and complete automation of cross-version compatibility remain future work.
 
 ## Quick start
 
@@ -22,6 +22,22 @@ python tools/patch_eden.py --source eden-source.zip --output eden-custom.zip
 ```
 
 **Important:** GitHub-generated source ZIP files generally omit Git submodules. These are **not sufficient for a full Eden compilation**. For reliable builds, use `git clone --recursive`; do not download or run arbitrary third-party archives.
+
+## Switch 2 home visual update (v0.2)
+
+The home UI was redesigned using the user's five supplied screenshot references:
+
+- light gray, 1280 × 720 reference layout with a horizontal row of full-size game covers;
+- ten bottom navigation icons in the same positions/order as the Switch 2 reference;
+- 12-hour clock, Wi-Fi and battery symbols at upper right;
+- two black Joy-Con symbols at bottom left, with four cells reflecting the number of **configured player inputs** (green) in Eden, limited to four;
+- black circular **A** button and **OK** label at bottom right;
+- upper-left profile photo ring animated with a changing multicolor gradient, which does not rotate the photo;
+- click the profile to import a picture using the native file chooser, rename, or clear it. The name and a locally saved PNG copy persist in the user's own application settings directory.
+
+Controls are based on Eden's \`ControllerConsoleState\` when the console-mode assignment engine is active, and \`Settings::values.players\` otherwise. Unavailable Nintendo services show a message instead of pretending to work.
+
+**Visual fidelity note:** the screenshot-faithful browser preview uses image crops supplied by the user. The current in-emulator Qt implementation draws the toolbar glyphs as vectors; their shapes are close, but the current native executable **does not yet bundle exact pixel artwork from those screenshots**. Nintendo artwork, network services, and battery telemetry are not implemented by this project. The native build is not yet verified.
 
 ## Windows graphical patcher
 
