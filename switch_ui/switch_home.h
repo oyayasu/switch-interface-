@@ -50,5 +50,6 @@ private:
     int selectedGame_ = 0;
     int selectedToolbar_ = 0;
     bool toolbarFocused_ = false;
+    QString toast_;
     int firstVisible_ = 0;
 };
