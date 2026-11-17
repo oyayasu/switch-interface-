@@ -14,7 +14,7 @@ import sys
 import tempfile
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 MARKER = "SWITCH_INTERFACE_PATCH_v1"
 SOURCE_FILES = (
     Path("src/yuzu/CMakeLists.txt"),
