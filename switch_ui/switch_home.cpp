@@ -23,12 +23,12 @@
 namespace {
 constexpr qreal CanvasWidth = 1280.0;
 constexpr qreal CanvasHeight = 720.0;
-constexpr int VisibleGames = 6;
+constexpr int VisibleGames = 5;
 const QColor Ink(47, 50, 55);
 const QColor Muted(111, 117, 124);
 const QColor Blue(0, 168, 240);
-const QColor Background(245, 246, 248);
-const char* kActions[] = {"Library", "Add games", "Controllers", "Settings", "Power"};
+const QColor Background(236, 236, 239);
+const char* kActions[] = {"Online", "Classics", "News", "eShop", "Album", "Add games", "Controllers", "Library", "Settings", "Power"};
 
 void label(QPainter& painter, const QRectF& rect, const QString& value,
            int size, const QColor& color, Qt::Alignment align = Qt::AlignCenter,
@@ -100,42 +100,72 @@ void SwitchHomeWidget::reload() {
 
 void SwitchHomeWidget::drawToolbarSymbol(QPainter& p, int index, const QRectF& area) const {
     p.save();
-    QPen pen(QColor(96, 100, 107), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    p.setPen(pen);
+    const QPointF c = area.center();
+    QColor ink(104, 108, 116);
+    if (index == 0) ink = QColor(214, 12, 43);
+    if (index == 1) ink = QColor(222, 154, 54);
+    if (index == 2) ink = QColor(84, 184, 67);
+    if (index == 3) ink = QColor(206, 54, 82);
+    if (index == 4) ink = QColor(67, 127, 202);
+    if (index == 5) ink = QColor(47, 172, 165);
+    p.setPen(QPen(ink, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     p.setBrush(Qt::NoBrush);
-    const QPointF center = area.center();
     switch (index) {
-    case 0: // Library
-        p.drawRoundedRect(area.adjusted(7, 10, -7, -10), 4, 4);
-        p.drawLine(QPointF(area.left() + 12, center.y() - 6),
-                   QPointF(area.right() - 12, center.y() - 6));
+    case 0:
+        p.setPen(Qt::NoPen);
+        p.setBrush(ink);
+        p.drawEllipse(area.adjusted(8, 8, -8, -8));
+        label(p, area.adjusted(5, 5, -5, -5), QStringLiteral("ONLINE"),
+              8, Qt::white, Qt::AlignCenter, true);
         break;
-    case 1: // Add
-        p.drawEllipse(area.adjusted(7, 7, -7, -7));
-        p.drawLine(QPointF(center.x() - 11, center.y()), QPointF(center.x() + 11, center.y()));
-        p.drawLine(QPointF(center.x(), center.y() - 11), QPointF(center.x(), center.y() + 11));
+    case 1:
+        p.drawRoundedRect(area.adjusted(13, 15, -13, -15), 3, 3);
+        label(p, area.adjusted(13, 15, -13, -15),
+              QStringLiteral("C"), 29, ink, Qt::AlignCenter, true);
         break;
-    case 2: // Controllers
-        p.drawRoundedRect(area.adjusted(5, 15, -5, -15), 8, 8);
-        p.drawLine(QPointF(area.left() + 15, center.y()), QPointF(area.left() + 31, center.y()));
-        p.drawLine(QPointF(area.left() + 23, center.y() - 8), QPointF(area.left() + 23, center.y() + 8));
-        p.setBrush(QColor(96, 100, 107));
-        p.drawEllipse(QPointF(area.right() - 22, center.y() - 5), 3, 3);
-        p.drawEllipse(QPointF(area.right() - 14, center.y() + 5), 3, 3);
+    case 2:
+        p.drawRoundedRect(area.adjusted(17, 11, -17, -11), 2, 2);
+        p.drawLine(QPointF(c.x() - 8, c.y() - 8), QPointF(c.x() + 8, c.y() - 8));
+        p.drawLine(QPointF(c.x() - 8, c.y()), QPointF(c.x() + 8, c.y()));
+        p.drawLine(QPointF(c.x() - 8, c.y() + 8), QPointF(c.x() + 5, c.y() + 8));
         break;
-    case 3: // Settings
-        p.drawEllipse(area.adjusted(9, 9, -9, -9));
-        p.drawEllipse(area.adjusted(21, 21, -21, -21));
+    case 3:
+        p.drawRect(area.adjusted(17, 24, -17, -15));
+        p.drawArc(QRectF(c.x() - 9, c.y() - 20, 18, 22), 0, 180 * 16);
+        break;
+    case 4:
+        p.drawRoundedRect(area.adjusted(12, 18, -12, -17), 3, 3);
+        p.drawRoundedRect(area.adjusted(21, 26, -21, -24), 2, 2);
+        break;
+    case 5:
+        p.drawRoundedRect(area.adjusted(14, 20, -14, -14), 3, 3);
+        p.drawLine(QPointF(c.x() - 12, c.y() - 10), QPointF(c.x() + 12, c.y() - 10));
+        p.drawLine(QPointF(c.x() - 5, c.y() - 22), QPointF(c.x() + 5, c.y() - 22));
+        break;
+    case 6:
+        p.drawRoundedRect(area.adjusted(9, 23, -9, -23), 8, 8);
+        p.drawLine(QPointF(c.x() - 19, c.y()), QPointF(c.x() - 5, c.y()));
+        p.drawLine(QPointF(c.x() - 12, c.y() - 7), QPointF(c.x() - 12, c.y() + 7));
+        p.setBrush(ink);
+        p.drawEllipse(QPointF(c.x() + 10, c.y() - 4), 2.5, 2.5);
+        p.drawEllipse(QPointF(c.x() + 19, c.y() + 4), 2.5, 2.5);
+        break;
+    case 7:
+        p.drawRoundedRect(area.adjusted(17, 12, -17, -12), 3, 3);
+        p.drawLine(QPointF(c.x() - 10, c.y() + 15), QPointF(c.x() + 10, c.y() + 15));
+        break;
+    case 8:
+        p.drawEllipse(area.adjusted(18, 18, -18, -18));
+        p.drawEllipse(area.adjusted(27, 27, -27, -27));
         for (int i = 0; i < 8; ++i) {
             const qreal angle = i * 3.141592653589793 / 4;
-            const QPointF a(center.x() + 20 * std::cos(angle), center.y() + 20 * std::sin(angle));
-            const QPointF b(center.x() + 28 * std::cos(angle), center.y() + 28 * std::sin(angle));
-            p.drawLine(a, b);
+            p.drawLine(QPointF(c.x() + 19 * std::cos(angle), c.y() + 19 * std::sin(angle)),
+                       QPointF(c.x() + 27 * std::cos(angle), c.y() + 27 * std::sin(angle)));
         }
         break;
-    case 4: // Power
-        p.drawArc(area.adjusted(11, 11, -11, -11), 45 * 16, 270 * 16);
-        p.drawLine(QPointF(center.x(), area.top() + 5), QPointF(center.x(), center.y() + 5));
+    case 9:
+        p.drawArc(area.adjusted(17, 17, -17, -17), 45 * 16, 270 * 16);
+        p.drawLine(QPointF(c.x(), c.y() - 23), QPointF(c.x(), c.y() + 2));
         break;
     }
     p.restore();
@@ -148,88 +178,104 @@ void SwitchHomeWidget::paintEvent(QPaintEvent*) {
     p.scale(width() / CanvasWidth, height() / CanvasHeight);
     p.fillRect(QRectF(0, 0, CanvasWidth, CanvasHeight), Background);
 
-    label(p, QRectF(58, 41, 400, 45), QStringLiteral("Home"), 28, Ink,
-          Qt::AlignVCenter | Qt::AlignLeft, true);
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(240, 91, 77));
-    p.drawEllipse(QRectF(1042, 46, 36, 36));
-    label(p, QRectF(1042, 46, 36, 36), QStringLiteral("1"), 17, Qt::white, Qt::AlignCenter, true);
-    label(p, QRectF(1100, 46, 125, 36),
-          QDateTime::currentDateTime().toString(QStringLiteral("HH:mm")), 23, Ink,
-          Qt::AlignVCenter | Qt::AlignRight, true);
+    // System profile + clock occupy the same positions as the Switch 2 Home reference.
+    p.setBrush(QColor(37, 88, 203));
+    p.setPen(QPen(Qt::white, 3));
+    p.drawEllipse(QRectF(49, 46, 56, 56));
+    label(p, QRectF(49, 46, 56, 56), QStringLiteral("P1"), 18, Qt::white, Qt::AlignCenter, true);
+    label(p, QRectF(987, 47, 195, 48),
+          QDateTime::currentDateTime().toString(QStringLiteral("h:mm AP")), 22, Ink,
+          Qt::AlignRight | Qt::AlignVCenter, true);
+    // Compact, illustrative wireless indicator; no fabricated battery percentage.
+    p.setPen(QPen(QColor(43, 47, 52), 3));
+    p.drawArc(QRectF(1192, 61, 30, 22), 25 * 16, 130 * 16);
+    p.setBrush(QColor(43, 47, 52));
+    p.drawEllipse(QPointF(1207, 83), 2.5, 2.5);
 
     gameTargets_.clear();
     if (games_.isEmpty()) {
-        label(p, QRectF(70, 175, 1140, 55), QStringLiteral("No games in the library"), 29, Ink, Qt::AlignCenter, true);
-        label(p, QRectF(70, 233, 1140, 36),
-              QStringLiteral("Add a game directory using the + button below"), 18, Muted);
+        label(p, QRectF(100, 191, 1080, 60), QStringLiteral("No games available"),
+              31, Ink, Qt::AlignCenter, true);
+        label(p, QRectF(100, 258, 1080, 36),
+              QStringLiteral("Select Add games below to choose a folder."),
+              19, Muted);
     } else {
         if (selectedGame_ < firstVisible_) firstVisible_ = selectedGame_;
         if (selectedGame_ >= firstVisible_ + VisibleGames)
             firstVisible_ = selectedGame_ - VisibleGames + 1;
-        firstVisible_ = std::clamp(firstVisible_, 0, std::max(0, static_cast<int>(games_.size()) - VisibleGames));
-
-        const Game& current = games_[selectedGame_];
-        label(p, QRectF(64, 123, 1145, 55), current.title, 31, Ink,
-              Qt::AlignVCenter | Qt::AlignLeft, true);
-        const int visible = std::min(VisibleGames, static_cast<int>(games_.size()) - firstVisible_);
+        firstVisible_ = std::clamp(
+            firstVisible_, 0, std::max(0, static_cast<int>(games_.size()) - VisibleGames));
+        if (!toolbarFocused_) {
+            label(p, QRectF(20, 142, 1140, 38), games_[selectedGame_].title,
+                  23, QColor(89, 110, 170), Qt::AlignVCenter | Qt::AlignLeft);
+        }
+        const int visible = std::min(
+            VisibleGames, static_cast<int>(games_.size()) - firstVisible_);
         for (int slot = 0; slot < visible; ++slot) {
             const int index = slot + firstVisible_;
             const bool active = selectedGame_ == index && !toolbarFocused_;
-            const QRectF imageRect(62 + slot * 195, 230, 175, 175);
+            const QRectF imageRect(103 + slot * 270, 201, 254, 254);
             gameTargets_.append(imageRect);
-            p.setPen(active ? QPen(Blue, 5) : QPen(QColor(219, 222, 225), 1));
-            p.setBrush(Qt::white);
-            p.drawRoundedRect(imageRect.adjusted(active ? -5 : 0, active ? -5 : 0,
-                                                  active ? 5 : 0, active ? 5 : 0), 4, 4);
+            p.setPen(active ? QPen(Blue, 5) : QPen(QColor(217, 219, 223), 1));
+            p.setBrush(QColor(248, 248, 250));
+            p.drawRoundedRect(imageRect.adjusted(active ? -4 : 0, active ? -4 : 0,
+                                                  active ? 4 : 0, active ? 4 : 0), 8, 8);
+            const QRectF body = imageRect.adjusted(3, 3, -3, -3);
+            QPainterPath rounded;
+            rounded.addRoundedRect(body, 7, 7);
+            p.save();
+            p.setClipPath(rounded);
             if (!games_[index].icon.isNull()) {
-                p.drawPixmap(imageRect.adjusted(3, 3, -3, -3).toRect(),
-                             games_[index].icon);
+                p.drawPixmap(body.toRect(), games_[index].icon);
             } else {
-                p.fillRect(imageRect.adjusted(3, 3, -3, -3), QColor(224, 231, 236));
-                label(p, imageRect.adjusted(16, 48, -16, -48),
-                      games_[index].title.left(2).toUpper(), 40, QColor(110, 125, 140),
-                      Qt::AlignCenter, true);
+                p.fillRect(body, QColor(220, 229, 236));
+                label(p, body.adjusted(16, 75, -16, -75),
+                      games_[index].title.left(2).toUpper(), 54,
+                      QColor(108, 124, 143), Qt::AlignCenter, true);
             }
-            label(p, QRectF(imageRect.left(), 419, 175, 43), games_[index].title, 15,
-                  active ? Ink : Muted, Qt::AlignTop | Qt::AlignHCenter, active);
+            p.restore();
         }
-        if (firstVisible_ > 0)
-            label(p, QRectF(19, 288, 30, 45), QStringLiteral("‹"), 42, Muted);
-        if (firstVisible_ + visible < games_.size())
-            label(p, QRectF(1225, 288, 30, 45), QStringLiteral("›"), 42, Muted);
     }
 
-    p.setPen(QPen(QColor(223, 226, 230), 1));
-    p.drawLine(QPointF(58, 501), QPointF(1220, 501));
+    // Bottom navigation capsule.
+    const QRectF toolbarBg(221, 516, 843, 94);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(248, 248, 249));
+    p.drawRoundedRect(toolbarBg, 47, 47);
     toolbarTargets_.clear();
-    const qreal spacing = 119;
-    const qreal startX = (CanvasWidth - spacing * 4) / 2 - 39;
-    for (int i = 0; i < 5; ++i) {
-        const QRectF area(startX + i * spacing, 524, 78, 78);
+    for (int i = 0; i < 10; ++i) {
+        const QRectF area(230 + i * 83, 529, 70, 70);
         toolbarTargets_.append(area);
         if (toolbarFocused_ && selectedToolbar_ == i) {
-            p.setBrush(Qt::white);
-            p.setPen(QPen(Blue, 4));
+            p.setPen(QPen(QColor(176, 101, 207), 3));
+            p.setBrush(QColor(251, 251, 252));
             p.drawEllipse(area.adjusted(-3, -3, 3, 3));
-        } else {
-            p.setBrush(Qt::white);
-            p.setPen(QPen(QColor(228, 230, 233), 1));
-            p.drawEllipse(area);
         }
         drawToolbarSymbol(p, i, area);
-        label(p, QRectF(area.left() - 30, 606, 138, 20),
-              QString::fromLatin1(kActions[i]), 13, Muted);
     }
-    p.setPen(QPen(QColor(218, 222, 225), 1));
-    p.drawLine(QPointF(58, 652), QPointF(1220, 652));
-    label(p, QRectF(930, 661, 280, 34), QStringLiteral("A  Select      B  Back"),
-          16, Ink, Qt::AlignRight | Qt::AlignVCenter);
+    if (toolbarFocused_) {
+        label(p, QRectF(375, 611, 530, 34),
+              QString::fromLatin1(kActions[selectedToolbar_]),
+              23, QColor(65, 120, 192));
+    }
+    if (!toast_.isEmpty()) {
+        label(p, QRectF(355, 640, 570, 35), toast_, 17,
+              QColor(80, 90, 100), Qt::AlignCenter);
+    }
+    // Small controller status illustration, as seen at lower left in the reference.
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(30, 32, 35));
+    p.drawRoundedRect(QRectF(66, 651, 22, 43), 9, 9);
+    p.drawRoundedRect(QRectF(95, 651, 22, 43), 9, 9);
+    label(p, QRectF(1055, 660, 180, 35),
+          toolbarFocused_ ? QStringLiteral("B  Back      A  OK")
+                          : QStringLiteral("A  OK"),
+          20, Ink, Qt::AlignRight | Qt::AlignVCenter);
 }
 
 void SwitchHomeWidget::moveSelection(int distance) {
     if (toolbarFocused_) {
-        selectedToolbar_ = std::clamp(selectedToolbar_ + distance, 0, 4);
+        selectedToolbar_ = std::clamp(selectedToolbar_ + distance, 0, 9);
     } else if (!games_.isEmpty()) {
         selectedGame_ = std::clamp(selectedGame_ + distance, 0, static_cast<int>(games_.size()) - 1);
     }
@@ -242,11 +288,20 @@ void SwitchHomeWidget::activate() {
         return;
     }
     switch (selectedToolbar_) {
-    case 0: if (onNativeLibrary) onNativeLibrary(); break;
-    case 1: if (onAddDirectory) onAddDirectory(); break;
-    case 2: if (onControllers) onControllers(); break;
-    case 3: if (onSettings) onSettings(); break;
-    case 4: if (onClose) onClose(); break;
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+        toast_ = QStringLiteral("This console-only feature is not available in Eden.");
+        QTimer::singleShot(2200, this, [this] { toast_.clear(); update(); });
+        update();
+        break;
+    case 5: if (onAddDirectory) onAddDirectory(); break;
+    case 6: if (onControllers) onControllers(); break;
+    case 7: if (onNativeLibrary) onNativeLibrary(); break;
+    case 8: if (onSettings) onSettings(); break;
+    case 9: if (onClose) onClose(); break;
     }
 }
 
