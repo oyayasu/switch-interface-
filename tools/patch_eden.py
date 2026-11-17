@@ -135,6 +135,8 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         cpp,
         "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n"
         "    // Set up game list mode checkboxes.",
+        "    // Keep 256px metadata icons for the large Switch-style home tiles.\n"
+        "    UISettings::values.game_icon_size.SetValue(256);\n"
         "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n" + bridge +
         "\n    // Set up game list mode checkboxes.",
         "src/yuzu/main_window.cpp",
