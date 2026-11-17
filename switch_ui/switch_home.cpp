@@ -7,6 +7,7 @@
 #include <functional>
 #include <QAbstractItemModel>
 #include <QConicalGradient>
+#include <QLinearGradient>
 #include <QDir>
 #include <QFileDialog>
 #include <QImage>
