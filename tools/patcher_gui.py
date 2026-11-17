@@ -5,14 +5,30 @@ from __future__ import annotations
 
 from pathlib import Path
 import queue
-import subprocess
-import sys
 import threading
+from contextlib import redirect_stdout, redirect_stderr
+import patch_eden
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
-PATCHER = Path(__file__).with_name("patch_eden.py")
+class MessageStream:
+    def __init__(self, messages):
+        self.messages = messages
+        self.pending = ""
+
+    def write(self, value):
+        self.pending += value
+        while "\n" in self.pending:
+            line, self.pending = self.pending.split("\n", 1)
+            self.messages.put(("log", line))
+        return len(value)
+
+    def flush(self):
+        if self.pending:
+            self.messages.put(("log", self.pending))
+            self.pending = ""
+
 
 
 class PatcherWindow(tk.Tk):
@@ -125,25 +141,21 @@ class PatcherWindow(tk.Tk):
         self.run_button.configure(state="disabled")
         self.append_log(f"Source: {source}")
         self.append_log(f"Destination: {output}")
-        command = [sys.executable, "-u", str(PATCHER),
-                   "--source", source, "--output", output]
+        command = ["--source", source, "--output", output]
         if self.compile.get():
             command.append("--build")
         threading.Thread(target=self.worker, args=(command,), daemon=True).start()
 
     def worker(self, command: list[str]) -> None:
+        stream = MessageStream(self.messages)
         try:
-            process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, errors="replace", bufsize=1,
-            )
-            assert process.stdout is not None
-            for line in process.stdout:
-                self.messages.put(("log", line.rstrip("\n")))
-            status = process.wait()
+            with redirect_stdout(stream), redirect_stderr(stream):
+                status = patch_eden.main(command)
+            stream.flush()
             self.messages.put(("done", str(status)))
-        except OSError as error:
-            self.messages.put(("log", f"Could not launch patcher: {error}"))
+        except (Exception, SystemExit) as error:
+            stream.flush()
+            self.messages.put(("log", f"Could not complete patch: {error}"))
             self.messages.put(("done", "1"))
 
     def read_messages(self) -> None:
