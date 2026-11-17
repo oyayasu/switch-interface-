@@ -78,6 +78,8 @@ private:
     int gradientTick_ = 0;
     bool toolbarFocused_ = false;
     Page page_ = Page::Home;
+    Page controllersParent_ = Page::Home;
+    Page profileParent_ = Page::Home;
     int menuSelection_ = 1;
     int controllerDetail_ = 1;
     int settingsSelection_ = 0;
