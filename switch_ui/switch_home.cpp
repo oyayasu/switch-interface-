@@ -11,6 +11,8 @@
 #include <QFileDialog>
 #include <QImage>
 #include <QInputDialog>
+#include <QLineEdit>
+#include <QCursor>
 #include <QMenu>
 #include <QPainterPath>
 #include <QSettings>
@@ -422,9 +424,7 @@ void SwitchHomeWidget::activate() {
     case 2:
     case 3:
     case 4:
-        toast_ = QStringLiteral("This console-only feature is not available in Eden.");
-        QTimer::singleShot(2200, this, [this] { toast_.clear(); update(); });
-        update();
+        showUnavailable();
         break;
     case 5: if (onAddDirectory) onAddDirectory(); break;
     case 6: if (onControllers) onControllers(); break;
@@ -444,6 +444,7 @@ void SwitchHomeWidget::keyPressEvent(QKeyEvent* event) {
     case Qt::Key_Return:
     case Qt::Key_Space: activate(); return;
     case Qt::Key_Escape: toolbarFocused_ = false; update(); return;
+    case Qt::Key_P: editProfile(); return;
     default: QWidget::keyPressEvent(event); return;
     }
 }
@@ -452,6 +453,10 @@ void SwitchHomeWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() != Qt::LeftButton) return;
     const QPointF pos(event->position().x() * CanvasWidth / width(),
                       event->position().y() * CanvasHeight / height());
+    if (avatarTarget_.contains(pos)) {
+        editProfile();
+        return;
+    }
     for (int slot = 0; slot < gameTargets_.size(); ++slot) {
         if (gameTargets_[slot].contains(pos)) {
             const int newIndex = slot + firstVisible_;
@@ -473,4 +478,105 @@ void SwitchHomeWidget::mousePressEvent(QMouseEvent* event) {
             return;
         }
     }
+}
+
+
+void SwitchHomeWidget::showUnavailable() {
+    toast_ = QStringLiteral("This Nintendo service is not available in Eden.");
+    update();
+    QTimer::singleShot(2500, this, [this] {
+        toast_.clear();
+        update();
+    });
+}
+
+void SwitchHomeWidget::refreshControllerCount() {
+    // Keep assignments tied to Eden's real state, not a fake demo counter.
+    int next = 0;
+    auto& state = Common::GetControllerConsoleState();
+    {
+        std::scoped_lock guard(state.mutex);
+        if (state.engine_active) {
+            for (const auto& player : state.players) {
+                if (!player.leaving) ++next;
+            }
+        } else {
+            // Standard/manual input mode uses the configured emulated players.
+            for (const auto& player : Settings::values.players.GetValue()) {
+                if (player.connected) ++next;
+            }
+        }
+    }
+    next = std::clamp(next, 0, 4);
+    if (next != controllers_) {
+        controllers_ = next;
+        update();
+    }
+}
+
+void SwitchHomeWidget::loadProfile() {
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                       QStringLiteral("SwitchInterface"), QStringLiteral("Eden"));
+    profileName_ = settings.value(QStringLiteral("profile/name"),
+                                  QStringLiteral("Player's Page")).toString();
+    const QString picturePath = settings.value(QStringLiteral("profile/image")).toString();
+    if (!picturePath.isEmpty()) {
+        QPixmap picture(picturePath);
+        if (!picture.isNull()) {
+            profilePicture_ = picture.scaled(144, 144, Qt::KeepAspectRatioByExpanding,
+                                             Qt::SmoothTransformation);
+        }
+    }
+}
+
+void SwitchHomeWidget::editProfile() {
+    QMenu popup(this);
+    QAction* photo = popup.addAction(QStringLiteral("Change profile picture..."));
+    QAction* rename = popup.addAction(QStringLiteral("Rename profile..."));
+    QAction* clear = popup.addAction(QStringLiteral("Remove profile picture"));
+    QAction* action = popup.exec(QCursor::pos());
+    if (action == nullptr) return;
+
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                       QStringLiteral("SwitchInterface"), QStringLiteral("Eden"));
+    if (action == photo) {
+        const QString filename = QFileDialog::getOpenFileName(
+            this, QStringLiteral("Choose a profile picture"), QString(),
+            QStringLiteral("Images (*.png *.jpg *.jpeg *.webp *.bmp)"));
+        if (filename.isEmpty()) return;
+        const QImage input(filename);
+        if (input.isNull()) {
+            showUnavailable();
+            return;
+        }
+        // Save a copy under the user's own configuration directory so the source
+        // image may be moved without breaking the profile across Eden updates.
+        const QString directory = QStandardPaths::writableLocation(
+            QStandardPaths::AppDataLocation);
+        if (!QDir().mkpath(directory)) return;
+        const QString destination = QDir(directory).filePath(
+            QStringLiteral("switch-interface-profile.png"));
+        const QImage square = input.scaled(256, 256,
+                                          Qt::KeepAspectRatioByExpanding,
+                                          Qt::SmoothTransformation);
+        const QPoint origin((square.width() - 256) / 2,
+                            (square.height() - 256) / 2);
+        if (!square.copy(QRect(origin, QSize(256, 256))).save(destination, "PNG")) return;
+        settings.setValue(QStringLiteral("profile/image"), destination);
+        profilePicture_ = QPixmap(destination);
+    } else if (action == rename) {
+        bool ok = false;
+        const QString proposed = QInputDialog::getText(
+            this, QStringLiteral("Profile name"), QStringLiteral("Name:"),
+            QLineEdit::Normal, profileName_, &ok).trimmed();
+        if (ok && !proposed.isEmpty()) {
+            profileName_ = proposed.left(28);
+            settings.setValue(QStringLiteral("profile/name"), profileName_);
+        }
+    } else if (action == clear) {
+        profilePicture_ = QPixmap();
+        settings.remove(QStringLiteral("profile/image"));
+    }
+    settings.sync();
+    update();
 }
