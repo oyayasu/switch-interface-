@@ -86,7 +86,9 @@ class PatcherTests(unittest.TestCase):
         self.assertEqual(main(["--source", str(self.source), "--output", str(output)]), 0)
         self.assertTrue((output / "src/yuzu/switch_home.cpp").is_file())
         self.assertFalse((self.source / "src/yuzu/switch_home.cpp").exists())
-        self.assertEqual(main(["--source", str(self.source), "--output", str(output)]), 2)
+        with self.assertRaises(SystemExit) as error:
+            main(["--source", str(self.source), "--output", str(output)])
+        self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == "__main__":
