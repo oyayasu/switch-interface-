@@ -764,6 +764,8 @@ void SwitchHomeWidget::back() {
     switch (page_) {
     case Page::Home: toolbarFocused_ = false; break;
     case Page::ControllerDetail: page_ = Page::Controllers; break;
+    case Page::Controllers: page_ = controllersParent_; break;
+    case Page::Profile: page_ = profileParent_; break;
     case Page::SettingsDetail: page_ = Page::Settings; break;
     default: page_ = Page::Home; break;
     }
@@ -782,9 +784,11 @@ void SwitchHomeWidget::activateSubpage() {
         break;
     case Page::Settings:
         if (settingsSelection_ == 2) {
+            controllersParent_ = Page::Settings;
             page_ = Page::Controllers;
             menuSelection_ = 1;
         } else if (settingsSelection_ == 4) {
+            profileParent_ = Page::Settings;
             page_ = Page::Profile;
         } else {
             page_ = Page::SettingsDetail;
@@ -835,7 +839,7 @@ void SwitchHomeWidget::activate() {
         page_ = Page::Service;
         break;
     case 5: if (onAddDirectory) onAddDirectory(); break;
-    case 6: page_ = Page::Controllers; menuSelection_ = 1; break;
+    case 6: controllersParent_ = Page::Home; page_ = Page::Controllers; menuSelection_ = 1; break;
     case 7: page_ = Page::Library; librarySelection_ = 0; break;
     case 8: page_ = Page::Settings; settingsSelection_ = 0; break;
     case 9: page_ = Page::Power; powerSelection_ = 0; break;
@@ -1088,6 +1092,7 @@ void SwitchHomeWidget::loadProfile() {
 }
 
 void SwitchHomeWidget::editProfile() {
+    profileParent_ = Page::Home;
     profileSelection_ = 0;
     page_ = Page::Profile;
     update();
