@@ -20,7 +20,13 @@
 #include <QStandardPaths>
 #include <QToolTip>
 #include <QStringList>
+#include "common/settings.h"
+#if __has_include("common/controller_console_state.h")
 #include "common/controller_console_state.h"
+#define SWITCH_INTERFACE_HAS_CONSOLE_STATE 1
+#else
+#define SWITCH_INTERFACE_HAS_CONSOLE_STATE 0
+#endif
 #include <QDateTime>
 #include <QFileInfo>
 #include <QFont>
@@ -1062,8 +1068,8 @@ void SwitchHomeWidget::pollGamepadNavigation() {
 }
 
 void SwitchHomeWidget::refreshControllerCount() {
-    // Keep assignments tied to Eden's real state, not a fake demo counter.
     int next = 0;
+#if SWITCH_INTERFACE_HAS_CONSOLE_STATE
     auto& state = Common::GetControllerConsoleState();
     {
         std::scoped_lock guard(state.mutex);
@@ -1072,12 +1078,18 @@ void SwitchHomeWidget::refreshControllerCount() {
                 if (!player.leaving) ++next;
             }
         } else {
-            // Standard/manual input mode uses the configured emulated players.
             for (const auto& player : Settings::values.players.GetValue()) {
                 if (player.connected) ++next;
             }
         }
     }
+#else
+    // Eglantine and Lichii currently do not expose Eden's console-state API.
+    // Reflect configured emulated players rather than invent a live device count.
+    for (const auto& player : Settings::values.players.GetValue()) {
+        if (player.connected) ++next;
+    }
+#endif
     next = std::clamp(next, 0, 4);
     if (next != controllers_) {
         controllers_ = next;
