@@ -10,6 +10,14 @@ The controller page shows Eden's configured/assigned player count (up to four in
 
 Home navigation uses keyboard/mouse and SDL3 gamepad d-pad/left-stick with A/B confirmation, using physical face-button labels when SDL recognizes a Nintendo layout. The appearance is an ongoing recreation, not a guaranteed pixel-exact reproduction. Advanced console-only features are presented as unavailable inside the custom shell instead of opening an unrelated desktop window.
 
+## Compile a playable Windows emulator on GitHub
+
+Use [Build Switch Interface Emulator (Windows)](https://github.com/oyayasu/switch-interface-/actions/workflows/build-custom-emulator.yml) > **Run workflow** (branch `main`). This checks out the Lichii `nx2` source, applies the current custom Switch home UI, uses the Windows 2022 toolchain, Qt 6.8.3, Vulkan SDK and CMake/Ninja, then packages the resulting `lichii.exe` and dependencies as an Actions artifact named `Lichii-Switch-Interface-Windows-x64`.
+
+Open the successful run page, find **Artifacts**, download the ZIP, extract the whole directory, and run `lichii.exe`. Do not run just the EXE without its companion DLLs. This build is distinct from the Windows **patcher installer**.
+
+**Build status:** The source-patching smoke tests passed for Eden, Eglantine and Lichii, but the native C++ emulator build may still find API/Qt integration errors. Review the workflow logs if it fails; don't interpret an upstream smoke-test pass as a runnable emulator validation.
+
 ## Windows installer (v0.4.0)
 
 **[Windows workflow and downloadable installer artifact](https://github.com/oyayasu/switch-interface-/actions/workflows/windows-patcher.yml)**
