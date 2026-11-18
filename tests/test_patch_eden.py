@@ -8,7 +8,7 @@ import unittest
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from patch_eden import PatchError, extract_zip_safely, main, patch_tree
+from patch_eden import PatchError, detect_emulator, extract_zip_safely, main, patch_tree
 
 
 class PatcherTests(unittest.TestCase):
@@ -55,6 +55,37 @@ class PatcherTests(unittest.TestCase):
         self.assertNotIn("switch_home->onSettings", content)
         self.assertIn("Controllers and Settings are now rendered", content)
         self.assertFalse(patch_tree(self.source))
+
+    def test_eglantine_variant_detects_and_patches(self):
+        target = self.source / "src/yuzu/main_window.cpp"
+        target.write_text("// Eglantine Emulator Project\\n" + target.read_text())
+        emulator, spec = detect_emulator(self.source)
+        self.assertEqual(emulator, "eglantine")
+        self.assertEqual(spec["frontend"], "src/yuzu")
+        self.assertTrue(patch_tree(self.source))
+        self.assertEqual(
+            __import__("json").loads((self.source / ".switch-interface.json").read_text())["emulator"],
+            "eglantine",
+        )
+
+    def test_lichii_variant_uses_its_own_cmake_target(self):
+        renamed = self.source / "src/lichii"
+        (self.source / "src/yuzu").rename(renamed)
+        cmake = renamed / "CMakeLists.txt"
+        cmake.write_text(cmake.read_text().replace("add_executable(yuzu", "add_executable(lichii"))
+        emulator, spec = detect_emulator(self.source)
+        self.assertEqual(emulator, "lichii")
+        self.assertEqual(spec["target"], "lichii")
+        self.assertTrue(patch_tree(self.source))
+        self.assertIn("add_executable(lichii", cmake.read_text())
+        self.assertTrue((renamed / "switch_home.cpp").is_file())
+        self.assertFalse((self.source / "src/yuzu/switch_home.cpp").exists())
+
+    def test_rejects_unrecognized_cmake_target(self):
+        cmake = self.source / "src/yuzu/CMakeLists.txt"
+        cmake.write_text(cmake.read_text().replace("add_executable(yuzu", "add_library(yuzu"))
+        with self.assertRaises(PatchError):
+            patch_tree(self.source)
 
     def test_unknown_upstream_revision_fails_without_writing(self):
         target = self.source / "src/yuzu/main_window.cpp"
