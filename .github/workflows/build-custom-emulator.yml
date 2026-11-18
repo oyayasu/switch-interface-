@@ -1,0 +1,134 @@
+name: Build Switch Interface Emulator (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'switch_ui/**'
+      - 'tools/patch_eden.py'
+      - '.github/workflows/build-custom-emulator.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: custom-lichii-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-lichii:
+    name: Lichii + Switch Interface / Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Checkout Switch Interface source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout Lichii nx2 source
+        uses: actions/checkout@v4
+        with:
+          repository: zortos293/Lichii
+          ref: nx2
+          path: lichii
+          persist-credentials: false
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure Windows C++ toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install CMake and Ninja
+        shell: pwsh
+        run: |
+          python -m pip install cmake==4.4.4 ninja
+          cmake --version
+          ninja --version
+
+      - name: Install Qt 6.8.3 with Qt Charts
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtcharts qtimageformats
+          cache: true
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        working-directory: lichii
+        run: |
+          ./tools/windows/install-vulkan-sdk.ps1
+          glslangValidator --version
+
+      - name: Apply Switch Interface directly to temporary Lichii checkout
+        shell: pwsh
+        run: |
+          @'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path("tools").resolve()))
+          from patch_eden import patch_tree, detect_emulator
+          src = Path("lichii")
+          emulator, details = detect_emulator(src)
+          assert emulator == "lichii", f"Expected Lichii, got {emulator}"
+          assert patch_tree(src, Path.cwd()), "Patch not applied"
+          assert (src / "src/lichii/switch_home.cpp").is_file()
+          print("Applied Switch Interface to", emulator)
+          '@ | python -
+          Get-Content lichii/.switch-interface.json
+
+      - name: Configure Lichii Release
+        shell: pwsh
+        run: |
+          cmake -S lichii -B lichii/build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_TESTING=OFF `
+            -DLICHII_TESTS=OFF `
+            -DLICHII_CMD=ON `
+            -DLICHII_ROOM=OFF `
+            -DLICHII_ROOM_STANDALONE=OFF `
+            -DLICHII_USE_BUNDLED_QT=OFF `
+            -DLICHII_USE_BUNDLED_SDL3=ON `
+            -DENABLE_UPDATE_CHECKER=OFF `
+            -DENABLE_WERROR=OFF `
+            -DUSE_DISCORD_PRESENCE=OFF `
+            "-DCMAKE_PREFIX_PATH=$env:QT_ROOT_DIR"
+
+      - name: Build patched Windows emulator
+        shell: pwsh
+        run: |
+          cmake --build lichii/build --config Release --parallel 3
+
+      - name: Bundle the Windows runtime
+        shell: pwsh
+        run: |
+          $exe = "lichii/build/bin/lichii.exe"
+          if (!(Test-Path $exe)) { throw "Expected lichii.exe not built" }
+          windeployqt --release --no-translations $exe
+          Get-ChildItem lichii/build/bin/ -File | Select-Object Name,Length
+          if (!(Test-Path "lichii/build/bin/lichii.exe")) { throw "Missing final EXE" }
+
+      - name: Upload Windows playable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lichii-Switch-Interface-Windows-x64
+          path: lichii/build/bin/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload CMake logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lichii-Build-Logs
+          path: |
+            lichii/build/CMakeFiles/CMakeConfigureLog.yaml
+            lichii/build/CMakeCache.txt
+          if-no-files-found: ignore
