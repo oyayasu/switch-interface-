@@ -180,7 +180,7 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         "        switch_home->setFocus();\n"
         "    }\n"
         "    tas_label->clear();",
-        "src/yuzu/main_window.cpp",
+        str(frontend / "main_window.cpp"),
     )
 
     # Only write once every upstream compatibility anchor has been validated.
