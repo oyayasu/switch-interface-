@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Simple graphical wrapper for the Switch Interface Eden source patcher."""
+"""Graphical Windows wrapper for the Eden, Eglantine and Lichii UI patcher."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,7 +34,7 @@ class MessageStream:
 class PatcherWindow(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Switch Interface — Eden UI Patcher")
+        self.title("Switch Interface — Multi-Emulator Patcher")
         self.geometry("780x560")
         self.minsize(660, 480)
         self.configure(bg="#f5f6f8")
@@ -56,11 +56,11 @@ class PatcherWindow(tk.Tk):
 
         outer = ttk.Frame(self, padding=24)
         outer.pack(fill="both", expand=True)
-        ttk.Label(outer, text="Eden UI Patcher", style="Heading.TLabel").pack(anchor="w")
-        ttk.Label(outer, text="Apply the Switch-style interface to a fresh Eden source copy.").pack(
+        ttk.Label(outer, text="Switch Interface Patcher", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(outer, text="Eden, Eglantine or Lichii — input a source ZIP or cloned folder.").pack(
             anchor="w", pady=(1, 22))
 
-        ttk.Label(outer, text="Eden source (.zip or cloned folder)").pack(anchor="w")
+        ttk.Label(outer, text="Emulator source (.zip or cloned folder)").pack(anchor="w")
         source_row = ttk.Frame(outer)
         source_row.pack(fill="x", pady=(6, 16))
         ttk.Entry(source_row, textvariable=self.source).pack(side="left", fill="x", expand=True)
@@ -79,7 +79,7 @@ class PatcherWindow(tk.Tk):
             variable=self.compile,
         ).pack(anchor="w", pady=(5, 16))
 
-        self.run_button = ttk.Button(outer, text="Patch Eden", command=self.start)
+        self.run_button = ttk.Button(outer, text="Apply Switch Interface", command=self.start)
         self.run_button.pack(anchor="w", pady=(0, 16))
 
         ttk.Label(outer, text="Output log").pack(anchor="w", pady=(0, 5))
@@ -93,12 +93,12 @@ class PatcherWindow(tk.Tk):
 
     def choose_source_zip(self) -> None:
         value = filedialog.askopenfilename(
-            title="Select Eden source ZIP", filetypes=[("ZIP archives", "*.zip")])
+            title="Select emulator source ZIP", filetypes=[("ZIP archives", "*.zip")])
         if value:
             self.source.set(value)
 
     def choose_source_folder(self) -> None:
-        value = filedialog.askdirectory(title="Select Eden source checkout")
+        value = filedialog.askdirectory(title="Select emulator source checkout")
         if value:
             self.source.set(value)
 
