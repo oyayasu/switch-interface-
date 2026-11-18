@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Reapply Switch Interface to an Eden source tree, without editing the original."""
+"""Reapply Switch Interface to Eden, Eglantine or Lichii source without altering input."""
 from __future__ import annotations
 
 import argparse
@@ -16,11 +16,14 @@ import zipfile
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 MARKER = "SWITCH_INTERFACE_PATCH_v1"
-SOURCE_FILES = (
-    Path("src/yuzu/CMakeLists.txt"),
-    Path("src/yuzu/main_window.h"),
-    Path("src/yuzu/main_window.cpp"),
-)
+EMULATOR_VARIANTS = {
+    "eden": {"frontend": "src/yuzu", "target": "yuzu",
+             "repository": "https://github.com/eden-emulator/mirror"},
+    "eglantine": {"frontend": "src/yuzu", "target": "yuzu",
+                  "repository": "https://github.com/Eglantine-Community/Eglantine"},
+    "lichii": {"frontend": "src/lichii", "target": "lichii",
+               "repository": "https://github.com/zortos293/Lichii"},
+}
 
 
 class PatchError(RuntimeError):
@@ -38,20 +41,39 @@ def replace_exact(contents: str, anchor: str, inserted: str, filename: str) -> s
     return contents.replace(anchor, inserted, 1)
 
 
+def detect_emulator(source: Path) -> tuple[str, dict[str, str]]:
+    """Resolve the frontend directory and CMake target from inspected source structure."""
+    if (source / "src/lichii/main_window.cpp").is_file():
+        selected = "lichii"
+    elif (source / "src/yuzu/main_window.cpp").is_file():
+        cpp = (source / "src/yuzu/main_window.cpp").read_text(encoding="utf-8")
+        selected = "eglantine" if "Eglantine Emulator Project" in cpp else "eden"
+    else:
+        raise PatchError("Cannot find src/yuzu or src/lichii Qt frontend.")
+    spec = EMULATOR_VARIANTS[selected]
+    cmake = source / spec["frontend"] / "CMakeLists.txt"
+    if not cmake.is_file() or f'add_executable({spec["target"]}\n' not in cmake.read_text(encoding="utf-8"):
+        raise PatchError(f"{selected}: unsupported or changed CMake executable target.")
+    return selected, spec
+
+
 def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
-    """Patch an Eden source tree in place. Caller must work on a COPY.
+    """Patch a source tree in place. Caller must work on a COPY.
 
     Returns False if this exact integration is already present.
     """
-    paths = [source / part for part in SOURCE_FILES]
+    emulator, spec = detect_emulator(source)
+    frontend = Path(spec["frontend"])
+    filenames = ("CMakeLists.txt", "main_window.h", "main_window.cpp")
+    paths = [source / frontend / name for name in filenames]
     if not all(path.is_file() for path in paths):
         missing = [str(path) for path in paths if not path.is_file()]
-        raise PatchError("Not a supported Eden source checkout. Missing: " + ", ".join(missing))
+        raise PatchError(f"{emulator}: missing frontend files: " + ", ".join(missing))
 
     texts = [path.read_text(encoding="utf-8") for path in paths]
     flags = [MARKER in content for content in texts]
     if all(flags):
-        if not all((source / "src/yuzu" / name).is_file()
+        if not all((source / frontend / name).is_file()
                    for name in ("switch_home.cpp", "switch_home.h")):
             raise PatchError("Patch marker is present but switch_home files are missing.")
         return False
@@ -59,28 +81,29 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
         raise PatchError("Partial or inconsistent integration found; refusing to continue.")
 
     cmake, header, cpp = texts
+    print(f"Detected {emulator.capitalize()} Qt frontend in {frontend}")
     cmake = replace_exact(
         cmake,
-        "add_executable(yuzu\n",
-        f"add_executable(yuzu\n    # {MARKER}\n    switch_home.cpp\n    switch_home.h\n",
-        "src/yuzu/CMakeLists.txt",
+        f'add_executable({spec["target"]}\n',
+        f'add_executable({spec["target"]}\n    # {MARKER}\n    switch_home.cpp\n    switch_home.h\n',
+        str(frontend / "CMakeLists.txt"),
     )
     header = replace_exact(
         header, "class GameList;\n",
         f"class GameList;\nclass SwitchHomeWidget; // {MARKER}\n",
-        "src/yuzu/main_window.h",
+        str(frontend / "main_window.h"),
     )
     header = replace_exact(
         header, "    GameList* game_list = nullptr;\n",
         "    GameList* game_list = nullptr;\n"
         "    SwitchHomeWidget* switch_home = nullptr;\n",
-        "src/yuzu/main_window.h",
+        str(frontend / "main_window.h"),
     )
     cpp = replace_exact(
         cpp, '#include "main_window.h"\n',
         '#include "main_window.h"\n'
         f'#include "switch_home.h" // {MARKER}\n',
-        "src/yuzu/main_window.cpp",
+        str(frontend / "main_window.cpp"),
     )
 
     bridge = """    // SWITCH_INTERFACE_PATCH_v1: use Eden's existing game metadata and boot flow.
@@ -131,15 +154,13 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
     switch_home->show();
     switch_home->setFocus();
 """
+    # A single stable anchor works on all three inspected Qt frontends. Lichii
+    # inserts a What's New block between PopulateAsync and this comment.
     cpp = replace_exact(
         cpp,
-        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n"
         "    // Set up game list mode checkboxes.",
-        "    // Keep 256px metadata icons for the large Switch-style home tiles.\n"
-        "    UISettings::values.game_icon_size.SetValue(256);\n"
-        "    game_list->PopulateAsync(UISettings::values.game_dirs);\n\n" + bridge +
-        "\n    // Set up game list mode checkboxes.",
-        "src/yuzu/main_window.cpp",
+        bridge + "\n    // Set up game list mode checkboxes.",
+        str(frontend / "main_window.cpp"),
     )
 
     # The game list is restored by Eden when a running game exits. Raise the home
@@ -165,7 +186,7 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
     # Only write once every upstream compatibility anchor has been validated.
     additions = ["switch_home.cpp", "switch_home.h"]
     for filename in additions:
-        if (source / "src/yuzu" / filename).exists():
+        if (source / frontend / filename).exists():
             raise PatchError(f"Unexpected existing Eden file: {filename}")
         if not (ui_root / "switch_ui" / filename).is_file():
             raise PatchError(f"Missing local integration source: {filename}")
@@ -173,13 +194,14 @@ def patch_tree(source: Path, ui_root: Path = ROOT) -> bool:
     for path, contents in zip(paths, (cmake, header, cpp)):
         path.write_text(contents, encoding="utf-8")
     for filename in additions:
-        shutil.copy2(ui_root / "switch_ui" / filename, source / "src/yuzu" / filename)
+        shutil.copy2(ui_root / "switch_ui" / filename, source / frontend / filename)
     (source / ".switch-interface.json").write_text(
         json.dumps(
             {
-                "name": "Switch Interface for Eden",
-                "version": 2,
-                "source": "https://github.com/eden-emulator/mirror",
+                "name": "Switch Interface",
+                "version": 3,
+                "emulator": emulator,
+                "source": spec["repository"],
                 "note": "A source-code UI patch. This does not verify runtime compatibility.",
             },
             indent=2,
@@ -232,7 +254,7 @@ def pack_zip(root: Path, archive: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, type=Path,
-                        help="Unmodified Eden source directory or source ZIP")
+                        help="Unmodified Eden, Eglantine or Lichii source folder/ZIP")
     parser.add_argument("--output", required=True, type=Path,
                         help="New patched directory or .zip (never overwritten)")
     parser.add_argument("--build", action="store_true",
@@ -272,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{'Applied' if applied else 'Already present'}: {output}")
 
         if args.build:
-            print("Configuring Eden using CMake (this may fetch dependencies)...")
+            print("Configuring modified emulator using CMake (this may fetch dependencies)...")
             subprocess.run(
                 ["cmake", "-S", str(output), "-B", str(output / "build"), *args.cmake_arg],
                 check=True,
