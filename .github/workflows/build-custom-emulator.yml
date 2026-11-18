@@ -65,7 +65,15 @@ jobs:
         working-directory: lichii
         run: |
           ./tools/windows/install-vulkan-sdk.ps1
-          glslangValidator --version
+
+      - name: Verify Vulkan in subsequent step (SDK path now exported)
+        shell: pwsh
+        run: |
+          $sdk = $env:VULKAN_SDK
+          if (-not $sdk) { throw "VULKAN_SDK was not exported by the installer" }
+          $tool = Join-Path $sdk "Bin/glslangValidator.exe"
+          if (!(Test-Path $tool)) { throw "Vulkan compiler not found: $tool" }
+          & $tool --version
 
       - name: Apply Switch Interface directly to temporary Lichii checkout
         shell: pwsh
