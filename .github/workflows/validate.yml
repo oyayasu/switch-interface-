@@ -1,7 +1,8 @@
-name: Validate patcher
+name: Validate multi-emulator patcher
 on:
   push:
   pull_request:
+
 jobs:
   python-tests:
     runs-on: ubuntu-latest
@@ -10,22 +11,53 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m py_compile tools/patch_eden.py
+      - run: python -m py_compile tools/patch_eden.py tools/patcher_gui.py
       - run: python -m unittest discover -s tests -v
+
   upstream-smoke:
+    name: Smoke patch ${{ matrix.emulator }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - emulator: Eden
+            repository: eden-emulator/mirror
+            ref: master
+            frontend: yuzu
+          - emulator: Eglantine
+            repository: Eglantine-Community/Eglantine
+            ref: nx2
+            frontend: yuzu
+          - emulator: Lichii
+            repository: zortos293/Lichii
+            ref: nx2
+            frontend: lichii
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: eden-emulator/mirror
-          ref: master
-          path: eden-upstream
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.ref }}
+          path: upstream
           fetch-depth: 1
+          sparse-checkout: |
+            CMakeLists.txt
+            src/yuzu/CMakeLists.txt
+            src/yuzu/main_window.h
+            src/yuzu/main_window.cpp
+            src/lichii/CMakeLists.txt
+            src/lichii/main_window.h
+            src/lichii/main_window.cpp
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Confirm patches still apply to upstream
-        run: python tools/patch_eden.py --source eden-upstream --output eden-patched
-      - name: Confirm Qt source was installed
-        run: test -f eden-patched/src/yuzu/switch_home.cpp
+      - name: Apply interface patch to actual upstream source
+        run: python tools/patch_eden.py --source upstream --output patched-source
+      - name: Check patched source and detected emulator
+        shell: bash
+        run: |
+          test -f patched-source/src/${{ matrix.frontend }}/switch_home.cpp
+          test -f patched-source/src/${{ matrix.frontend }}/switch_home.h
+          python -c "import json; d=json.load(open('patched-source/.switch-interface.json')); assert d['emulator']== '${{ matrix.emulator }}'.lower(),d"
